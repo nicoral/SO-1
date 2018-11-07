@@ -11,6 +11,13 @@ struct process
 	int Tmemoria;
 	int tama;
 	bool band;
+	process(string n,int Tiem,int tam)
+	{
+		this->nom=n;
+		this->Tmemoria=Tiem;
+		this->tama=tam;
+		this->band=false;
+	}
 };
 struct particiones
 {
@@ -23,6 +30,10 @@ struct memoria
 {
 	int tamMax;
 	vector<particiones> parti;
+	memoria(int t)
+	{
+		this->tamMax=t;
+	}
 };
 bool huecos(vector<particiones> &A)
 {
@@ -151,20 +162,54 @@ bool peor_ajuste(vector<process> &A,memoria &Memoria,int &i){
 	else return false;
 
 }
-
-void colocacion(vector<process> &A,memoria &Memoria,int &i,int ajuste){
-    if(ajuste==1){primer_ajuste(A,Memoria,i);}
-    if(ajuste==2){mejor_ajuste(A,Memoria,i);}
-    if(ajuste==3){peor_ajuste(A,Memoria,i);}
-    //if(ajuste==4){peor_ajuste(A,M,i);}
+bool siguiente_ajuste(vector<process> &A,memoria &Memoria,int &i,int &sig)
+{
+	if(sig==Memoria.parti.size()-1)
+	{
+		return primer_ajuste(A,Memoria,i);
+	}
+	else
+	{
+		for(int j=sig;j<Memoria.parti.size();j++)
+		{
+			if(Memoria.parti[j].estado==false && Memoria.parti[j].tam>=A[i].tama )
+			{
+				Memoria.parti[j].nom=A[i].nom;
+				Memoria.parti[j].tiempo=A[i].Tmemoria;
+				Memoria.parti[j].estado=true;
+				A[i].band=true;
+				sig=j;
+				return true;
+			}
+		}
+		for(int j=0;j<sig;j++)
+		{
+			if(Memoria.parti[j].estado==false && Memoria.parti[j].tam>=A[i].tama )
+			{
+				Memoria.parti[j].nom=A[i].nom;
+				Memoria.parti[j].tiempo=A[i].Tmemoria;
+				Memoria.parti[j].estado=true;
+				A[i].band=true;
+				sig=j;
+				return true;
+			}
+		}
+		return false;
+	}
+}
+bool colocacion(vector<process> &A,memoria &Memoria,int &i,int ajuste,int &sig)
+{
+    if(ajuste==1){return primer_ajuste(A,Memoria,i);}
+    if(ajuste==2){return mejor_ajuste(A,Memoria,i);}
+    if(ajuste==3){return peor_ajuste(A,Memoria,i);}
+    if(ajuste==4){return siguiente_ajuste(A,Memoria,i,sig);}
 }
 
 
 void Pcompactacion(vector<process> &A,int mem,int ajuste)
 {
-	memoria M;
-	M.tamMax=mem;
-	int tem=0;
+	memoria M(mem);
+	int tem=0,sig=0;
 	particiones auxP;
 	int cont=0;
 	//mientras que hayan procesos
@@ -186,15 +231,17 @@ void Pcompactacion(vector<process> &A,int mem,int ajuste)
 					auxP.estado=true;
 					M.parti.push_back(auxP);
 					cont=0;
+					sig=M.parti.size()-1;
 				}
 			}
 			//si ya hay procesos existentes en memoria
 			else
 			{
-
-                colocacion(A,M,i,ajuste);
-                cont=0;
-
+				if(A[i].band==false)
+				{
+					if(colocacion(A,M,i,ajuste,sig))
+	                	cont=0;
+				}
 				if(A[i].tama<EspacioLibre(M) && A[i].band==false)
 				{
 					A[i].band=true;
@@ -204,16 +251,21 @@ void Pcompactacion(vector<process> &A,int mem,int ajuste)
 					auxP.estado=true;
 					M.parti.push_back(auxP);
 					cont=0;
+					sig=M.parti.size()-1;
 				}
 
 			}
 		}
-
+		imprimirM(M,tem);
 		tem++;
 		for(int i=0;i<M.parti.size();i++)
 		{
 			if(M.parti[i].tiempo==0)
 			{
+				for(int j=i+1;j<M.parti.size();j++)
+				{
+					M.parti[j].tiempo-=1;
+				}
 				for(int j=0;j<M.parti.size();j++)
 				{
 					if(M.parti[j].tiempo==0)
@@ -223,52 +275,35 @@ void Pcompactacion(vector<process> &A,int mem,int ajuste)
 						M.parti[j].estado=false;
 					}
 				}
-				for(int j=i;j<M.parti.size();j++)
-				{
-					M.parti[j].tiempo-=1;
-				}
+				
 				///ban=false;
-				cout<<"1°: "<<endl;
-				imprimirM(M,tem);
+				/**cout<<"1°: "<<endl;
+				imprimirM(M,tem);*/
 				break;
 			}
 			else
 			{
 				M.parti[i].tiempo-=1;
 			}
-			cout<<"2°: "<<endl;
-			imprimirM(M,tem);
 		}
+		cout<<"2°: "<<endl;
+		imprimirM(M,tem);
 	}
 }
 
 int main()
 {
 	vector<process> v;
-	process aux;
-	aux.nom="p1";
-	aux.Tmemoria=2;
-	aux.tama=100;
-	aux.band=false;
+	process aux("p1",2,100);
 	v.push_back(aux);
-	aux.nom="p2";
-	aux.Tmemoria=1;
-	aux.tama=50;
-	aux.band=false;
-	v.push_back(aux);
-	aux.nom="p3";
-	aux.Tmemoria=2;
-	aux.tama=40;
-	aux.band=false;
-	v.push_back(aux);
-    aux.nom="p4";
-	aux.Tmemoria=1;
-	aux.tama=20;
-	aux.band=false;
-	v.push_back(aux);
-
-
-
-	Pcompactacion(v,200,1);
+	process aux1("p2",1,50);
+	v.push_back(aux1);
+	process aux2("p3",2,40);
+	v.push_back(aux2);
+	process aux3("p4",1,20);
+	v.push_back(aux3);
+	process aux4("p5",2,40);
+	v.push_back(aux4);
+	Pcompactacion(v,200,4);
 	return 0;
 }
